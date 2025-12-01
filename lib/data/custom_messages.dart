@@ -1,7 +1,9 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../services/message_service.dart';
+import '../services/couple_service.dart';
 import 'dart:developer' as developer;
+import '../services/firebase_service.dart';
 
 class CustomMessages {
   static const String _key = 'custom_messages';
@@ -10,6 +12,19 @@ class CustomMessages {
   // Išsaugo custom tekstą tam tikrai dienai
   static Future<void> saveCustomMessage(int dayOfYear, String message) async {
     try {
+      // 🔥 PATIKRINTI AR GALIMA RAŠYTI
+      final canWrite = await MessageService.canUserWriteMessages();
+      if (!canWrite) {
+        developer.log(
+          '❌ Vartotojas neturi teisių rašyti žinučių',
+          name: _loggerName,
+          level: 900,
+        );
+        throw Exception(
+          'Neturite teisių rašyti žinučių. Tik rašytojas gali rašyti.',
+        );
+      }
+
       final prefs = await SharedPreferences.getInstance();
 
       // Gauname esamus custom tekstus
@@ -33,7 +48,7 @@ class CustomMessages {
         '❌ Klaida išsaugant žinutę: $e',
         name: _loggerName,
         level: 1000,
-      ); // ERROR level
+      );
       rethrow;
     }
   }
@@ -56,14 +71,14 @@ class CustomMessages {
           '⚠️ Nepavyko sinchronizuoti su Firebase: ${cloudResult['error']}',
           name: _loggerName,
           level: 900,
-        ); // WARNING level
+        );
       }
     } catch (e) {
       developer.log(
         '⚠️ Klaida sinchronizuojant su Firebase: $e',
         name: _loggerName,
         level: 900,
-      ); // WARNING level
+      );
       // Neprarodome klaidos, nes vietinis išsaugojimas jau pavyko
     }
   }
@@ -127,6 +142,19 @@ class CustomMessages {
   // Ištrina custom tekstą
   static Future<void> deleteCustomMessage(int dayOfYear) async {
     try {
+      // 🔥 PATIKRINTI AR GALIMA TRINTI
+      final canDelete = await MessageService.canUserDeleteMessages();
+      if (!canDelete) {
+        developer.log(
+          '❌ Vartotojas neturi teisių trinti žinučių',
+          name: _loggerName,
+          level: 900,
+        );
+        throw Exception(
+          'Neturite teisių trinti žinučių. Tik rašytojas gali trinti.',
+        );
+      }
+
       final prefs = await SharedPreferences.getInstance();
       Map<String, String> customMessages = await getAllCustomMessages();
 
@@ -140,6 +168,9 @@ class CustomMessages {
           '🗑️ Ištrinta custom žinutė dienai $dayOfYear',
           name: _loggerName,
         );
+
+        // 🔥 IŠTRINTI IŠ FIREBASE JEI YRA
+        await _deleteFromFirebase(dayOfYear);
       }
     } catch (e) {
       developer.log(
@@ -148,6 +179,54 @@ class CustomMessages {
         level: 1000,
       );
       rethrow;
+    }
+  }
+
+  // Ištrinti iš Firebase
+  static Future<void> _deleteFromFirebase(int dayOfYear) async {
+    try {
+      // Gauti dabartinę porą
+      final couple = await CoupleService.getCurrentCouple();
+      if (couple == null) {
+        developer.log(
+          'ℹ️ Poros nerasta, negalima trinti iš Firebase',
+          name: _loggerName,
+        );
+        return;
+      }
+
+      final coupleId = couple['id'] as String?;
+      if (coupleId == null || coupleId.isEmpty) {
+        developer.log('ℹ️ Netinkamas coupleId', name: _loggerName);
+        return;
+      }
+
+      // Rasti žinutę dienai
+      final query = await FirebaseService.messagesCollection
+          .where('coupleId', isEqualTo: coupleId)
+          .where('dayOfYear', isEqualTo: dayOfYear)
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        await query.docs.first.reference.delete();
+        developer.log(
+          '✅ Žinutė ištrinta iš Firebase dienai $dayOfYear',
+          name: _loggerName,
+        );
+      } else {
+        developer.log(
+          'ℹ️ Firebase žinutės nerasta dienai $dayOfYear',
+          name: _loggerName,
+        );
+      }
+    } catch (e) {
+      developer.log(
+        '⚠️ Klaida trinant iš Firebase: $e',
+        name: _loggerName,
+        level: 900,
+      );
+      // Neprarodome klaidos, nes vietinis trynimas jau pavyko
     }
   }
 
@@ -172,7 +251,17 @@ class CustomMessages {
         name: _loggerName,
         level: 1000,
       );
-      return defaultMessage; // Grąžiname default žinutę net ir esant klaidai
+      return defaultMessage;
     }
+  }
+
+  // 🔥 NAUJAS: Patikrinti ar vartotojas turi rašymo teises
+  static Future<bool> canUserWriteMessages() async {
+    return await MessageService.canUserWriteMessages();
+  }
+
+  // 🔥 NAUJAS: Patikrinti ar vartotojas turi trynimo teises
+  static Future<bool> canUserDeleteMessages() async {
+    return await MessageService.canUserDeleteMessages();
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'package:firebase_auth/firebase_auth.dart';
 
 class UserService {
   static const String _loggerName = 'UserService';
@@ -7,20 +8,53 @@ class UserService {
   static bool _isInitialized = false;
   static DateTime? _lastUpdated;
 
-  // Inicializuoti UserService
-  static void initialize() {
+  // Inicializuoti UserService su Firebase Auth
+  static Future<void> initialize() async {
     if (_isInitialized) {
       developer.log('ℹ️ UserService jau inicializuotas', name: _loggerName);
       return;
     }
 
-    _userId = _generateDefaultUserId();
-    _isInitialized = true;
-    _lastUpdated = DateTime.now();
+    try {
+      // Bandyti gauti Firebase Auth vartotoją
+      final firebaseUser = FirebaseAuth.instance.currentUser;
 
-    developer.log('🚀 UserService inicializuotas', name: _loggerName);
-    developer.log('👤 Numatytasis userId: $_userId', name: _loggerName);
-    developer.log('🕐 Inicializavimo laikas: $_lastUpdated', name: _loggerName);
+      if (firebaseUser != null) {
+        _userId = firebaseUser.uid;
+        developer.log(
+          '✅ Naudojamas Firebase Auth userId: $_userId',
+          name: _loggerName,
+        );
+      } else {
+        // Jei nėra Firebase Auth vartotojo, sukurti anoniminį
+        developer.log(
+          '🔐 Nėra Firebase vartotojo, kuriamas anonimas...',
+          name: _loggerName,
+        );
+
+        final userCredential = await FirebaseAuth.instance.signInAnonymously();
+        _userId = userCredential.user?.uid ?? _generateDefaultUserId();
+
+        developer.log(
+          '✅ Sukurtas anoniminis vartotojas: $_userId',
+          name: _loggerName,
+        );
+      }
+
+      _isInitialized = true;
+      _lastUpdated = DateTime.now();
+
+      developer.log('🚀 UserService inicializuotas', name: _loggerName);
+      developer.log('👤 UserId: $_userId', name: _loggerName);
+    } catch (e) {
+      developer.log(
+        '❌ Klaida inicializuojant UserService: $e',
+        name: _loggerName,
+        level: 1000,
+      );
+      _userId = _generateDefaultUserId();
+      _isInitialized = true;
+    }
   }
 
   // Nustatyti userId
@@ -49,7 +83,7 @@ class UserService {
     _logUserIdInfo();
   }
 
-  // Gauti userId
+  // user_service.dart - get userId
   static String get userId {
     if (!_isInitialized) {
       developer.log(
@@ -57,12 +91,26 @@ class UserService {
         name: _loggerName,
         level: 900,
       );
-      initialize();
+
+      // 🔥 SVARBU: Inicializuoti su Firebase Auth
+      try {
+        final firebaseUser = FirebaseAuth.instance.currentUser;
+        if (firebaseUser != null) {
+          _userId = firebaseUser.uid;
+        } else {
+          // Sukurti naują anonimų vartotoją
+          _initializeWithFirebase();
+        }
+      } catch (e) {
+        _userId = _generateDefaultUserId();
+      }
+
+      _isInitialized = true;
     }
 
     if (_userId.isEmpty) {
       developer.log(
-        '⚠️ userId tuščias, generuojamas numatytasis',
+        '⚠️ userId tuščias, generuojamas default',
         name: _loggerName,
         level: 900,
       );
@@ -70,6 +118,22 @@ class UserService {
     }
 
     return _userId;
+  }
+
+  // 🔥 NAUJAS: Inicializuoti su Firebase
+  static Future<void> _initializeWithFirebase() async {
+    try {
+      final userCredential = await FirebaseAuth.instance.signInAnonymously();
+      _userId = userCredential.user?.uid ?? _generateDefaultUserId();
+      developer.log('✅ Firebase Auth userId: $_userId', name: _loggerName);
+    } catch (e) {
+      _userId = _generateDefaultUserId();
+      developer.log(
+        '⚠️ Firebase Auth klaida, naudojamas default: $_userId',
+        name: _loggerName,
+        level: 900,
+      );
+    }
   }
 
   // Patikrinti ar userId nustatytas
