@@ -17,3 +17,36 @@
 - **Firebase Auth** - anonymous login
 
 ## 🏗️ Project Structure
+lib/
+├── main.dart # Pagrindinis app
+├── screens/
+│ └── custom_messages_screen.dart
+├── services/
+│ ├── firebase_service.dart # Firebase konfigūracija
+│ ├── couple_service.dart # Porų logika
+│ ├── message_service.dart # Žinučių valdymas
+│ └── user_service.dart # Vartotojo sesija
+├── data/
+│ ├── messages.dart # Default žinutės
+│ └── custom_messages.dart # Custom žinutės
+└── widgets/ # Custom widgets
+
+
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Flutter 3.0+
+- Android Studio / Xcode
+- Firebase account
+
+### Installation
+```bash
+# Clone repository
+git clone https://github.com/LinaMink/lock-screen-love.git
+
+# Install dependencies
+flutter pub get
+
+# Run on device
+flutter run
