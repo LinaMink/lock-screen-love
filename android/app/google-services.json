@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "706215229938",
+    "project_id": "love-messages-app-c13e2",
+    "storage_bucket": "love-messages-app-c13e2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:706215229938:android:c0e255ecbf6657c105536b",
+        "android_client_info": {
+          "package_name": "com.example.lock_screen_love"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGLceq1EqXML5l7HXZ9C-Mw0VwpTbhWH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

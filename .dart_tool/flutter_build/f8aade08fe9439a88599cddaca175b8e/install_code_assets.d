@@ -1,0 +1,1 @@
+ C:\\Users\\Lina\\Desktop\\lock_screen_love\\.dart_tool\\flutter_build\\f8aade08fe9439a88599cddaca175b8e\\native_assets.json: 
